@@ -29,6 +29,10 @@ pegasus_model = PegasusForConditionalGeneration.from_pretrained(model_name)
 poppler_path=r"C:\Program Files\poppler-0.68.0\bin"
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
 
+ministries="Ministry of [^\n,]+|Department of [^\n,]+"
+date="Dated the \d{1,2}.?.? \w+, \d{4}"
+subject="Subject:([^.)]+.?)"
+
 @app.route('/getText',methods=['POST'])
 @cross_origin()
 def getText():
@@ -47,9 +51,27 @@ def getText():
             text=pytesseract.image_to_string(img)
             texts+=text+"\n"
 
+        matches=re.findall(ministries,texts)
+        ministry=""
+        if(len(matches)!=0):
+            for m in matches[:2]:
+                ministry+=m+"\n"
+
+        matches=re.findall(date,texts)
+        if(len(matches)!=0):
+            date_=matches[0]
+
+        matches=re.findall(subject,texts)
+        if(len(matches)!=0):
+            subject_=matches[0]
+
         return {
-            "text": text,
+            "text": texts,
+            "ministry": ministry,
+            "date": date_,
+            "subject":subject_
         }
+
     except:
         return "Invalid Url"
 
@@ -97,6 +119,8 @@ def Summary():
               encoded_summary[0],
               skip_special_tokens=True
         )
+
+        
 
         summary['summary'] = decoded_summary
         summary['scheme_name'] = scheme_name
