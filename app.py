@@ -1,3 +1,4 @@
+from audioop import cross
 from flask import Flask
 from flask import request
 from flask_cors import CORS, cross_origin
@@ -12,6 +13,9 @@ from transformers import PegasusForConditionalGeneration
 from transformers import PegasusTokenizer
 import re
 import nltk
+import pytesseract
+from pdf2image import convert_from_path
+from flask import jsonify
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -21,6 +25,33 @@ app.config["CORS_HEADERS"] = "Content-Type"
 model_name = "google/pegasus-xsum"
 pegasus_tokenizer = PegasusTokenizer.from_pretrained(model_name)
 pegasus_model = PegasusForConditionalGeneration.from_pretrained(model_name)
+
+poppler_path=r"C:\Program Files\poppler-0.68.0\bin"
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract'
+
+@app.route('/getText',methods=['POST'])
+@cross_origin()
+def getText():
+    url=request.json["url"]
+    try:
+        r = requests.get(url)
+
+        path = f"./pdfs/{str(url.split('/')[-1])}.pdf"
+        with open(path, "wb") as f:
+            f.write(r.content)
+
+        images = convert_from_path(pdf_path=path,poppler_path=poppler_path)
+
+        texts=""
+        for img in images:
+            text=pytesseract.image_to_string(img)
+            texts+=text+"\n"
+
+        return {
+            "text": text,
+        }
+    except:
+        return "Invalid Url"
 
 @app.route('/', methods=['POST'])
 @cross_origin()
